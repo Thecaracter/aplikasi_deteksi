@@ -24,7 +24,7 @@ data class DetectionResult(
 class ObjectDetectorHelper(
     private val context: Context,
     private val modelName: String = "best_int8.tflite", // INT8 untuk kecepatan realtime
-    private val threshold: Float = 0.00002f, // Threshold sangat rendah karena INT8 model output kecil (0.00001-0.0001)
+    private val threshold: Float = 0.2f, // Filter yang dibawah 20% sesuai request user
     private val maxResults: Int = 5, // Limit hasil deteksi
     private val useOptimizedSize: Boolean = true // Gunakan size kecil untuk realtime
 ) {

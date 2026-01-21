@@ -58,6 +58,28 @@ fun RealtimeDetectionScreen(
     val objectDetector = remember { ObjectDetectorHelper(context, useOptimizedSize = true) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     
+    // TTS State
+    var ttsEngine by remember { mutableStateOf<android.speech.tts.TextToSpeech?>(null) }
+    var lastAlertTime by remember { mutableStateOf(0L) }
+
+    // Init TTS
+    LaunchedEffect(Unit) {
+        ttsEngine = android.speech.tts.TextToSpeech(context) { status ->
+            if (status == android.speech.tts.TextToSpeech.SUCCESS) {
+                // Set Bahasa Indonesia
+                val result = ttsEngine?.setLanguage(java.util.Locale("id", "ID"))
+                if (result == android.speech.tts.TextToSpeech.LANG_MISSING_DATA || 
+                    result == android.speech.tts.TextToSpeech.LANG_NOT_SUPPORTED) {
+                    Log.e("TTS", "Bahasa Indonesia tidak didukung atau data hilang")
+                    // Fallback ke Default atau Inggris jika perlu
+                    // ttsEngine?.language = java.util.Locale.US 
+                }
+            } else {
+                Log.e("TTS", "Inisialisasi TTS gagal")
+            }
+        }
+    }
+    
     // Throttling untuk realtime detection - balance antara speed dan responsiveness
     var lastInferenceTime by remember { mutableStateOf(0L) }
     val minInferenceInterval = 300L // 300ms = max 3 FPS
@@ -72,6 +94,7 @@ fun RealtimeDetectionScreen(
         onDispose {
             objectDetector.close()
             cameraExecutor.shutdown()
+            ttsEngine?.shutdown()
         }
     }
     
@@ -120,6 +143,34 @@ fun RealtimeDetectionScreen(
                             frameCount = 0
                             lastFpsUpdate = currentTime
                         }
+
+                        // === TTS ALERT LOGIC START ===
+                        if (results.isNotEmpty()) {
+                            // Cari lubang dengan confidence tertinggi > 30%
+                            val bestDetection = results
+                                .filter { it.confidence > 0.30f }
+                                .maxByOrNull { it.confidence }
+
+                            if (bestDetection != null) {
+                                // Rate limiting: hanya bicara setiap 4 detik sekali
+                                if (currentTime - lastAlertTime > 4000) {
+                                    val distance = bestDetection.distance ?: 0f
+                                    // Pesan suara: "Awas, ada lubang 5 meter di depan"
+                                    val msg = if (distance > 0) {
+                                        // Membulatkan jarak untuk pembacaan yang lebih natural
+                                        val distString = String.format("%.0f", distance)
+                                        "Awas, ada lubang $distString meter di depan"
+                                    } else {
+                                        "Awas, ada lubang di depan"
+                                    }
+                                    
+                                    ttsEngine?.speak(msg, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, "POTHOLE_ALERT")
+                                    lastAlertTime = currentTime
+                                    Log.d("TTS", "Speaking: $msg")
+                                }
+                            }
+                        }
+                        // === TTS ALERT LOGIC END ===
                     },
                     objectDetector = objectDetector,
                     cameraExecutor = cameraExecutor,

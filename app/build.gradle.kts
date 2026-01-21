@@ -61,8 +61,8 @@ dependencies {
     implementation("androidx.camera:camera-view:1.4.1")
     
     // TensorFlow Lite
-    implementation("org.tensorflow:tensorflow-lite:2.13.0")
-    implementation("org.tensorflow:tensorflow-lite-gpu:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("org.tensorflow:tensorflow-lite-gpu:2.16.1")
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
     
     // Coil for image loading
